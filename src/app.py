@@ -1,29 +1,68 @@
 from flask import Flask, request, jsonify
-
+import logging
 from src.classifier import classify_file
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
 app = Flask(__name__)
 
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg'}
+# Define allowed file extensions
+ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 
-def allowed_file(filename):
+def allowed_file(filename: str) -> bool:
+    """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/classify_file', methods=['POST'])
-def classify_file_route():
+def classify_route():
+    # Log the incoming request
+    logging.info("Received classification request")
 
+    # Check if file is present in request
     if 'file' not in request.files:
-        return jsonify({"error": "No file part in the request"}), 400
+        logging.error("No file in request")
+        return jsonify({
+            "error": "No file provided",
+            "message": "Please include a file in the request"
+        }), 400
 
     file = request.files['file']
+
+    # Check if file was selected
     if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+        logging.error("No file selected")
+        return jsonify({
+            "error": "No file selected",
+            "message": "Please select a file"
+        }), 400
 
+    # Validate file extension
     if not allowed_file(file.filename):
-        return jsonify({"error": f"File type not allowed"}), 400
+        logging.error(f"Invalid file type: {file.filename}")
+        return jsonify({
+            "error": "Invalid file type",
+            "message": f"Allowed file types are: {', '.join(ALLOWED_EXTENSIONS)}"
+        }), 400
 
-    file_class = classify_file(file)
-    return jsonify({"file_class": file_class}), 200
+    # Classify the file using your existing classifier
+    try:
+        result = classify_file(file)
+        logging.info(f"Successfully classified file {file.filename} as {result}")
+        return jsonify({
+            "filename": file.filename,
+            "classification": result
+        }), 200
 
+    except Exception as e:
+        logging.error(f"Error classifying file: {str(e)}")
+        return jsonify({
+            "error": "Classification failed",
+            "message": "Internal server error"
+        }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

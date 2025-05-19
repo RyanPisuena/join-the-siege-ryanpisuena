@@ -52,6 +52,7 @@ We encourage you to be creative! Feel free to use any libraries, tools, services
     python -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
+    brew install tesseract
     ```
 
 3. Run the Flask app:
@@ -74,3 +75,4 @@ We encourage you to be creative! Feel free to use any libraries, tools, services
 Please aim to spend 3 hours on this challenge.
 
 Once completed, submit your solution by sharing a link to your forked repository. Please also provide a brief write-up of your ideas, approach, and any instructions needed to run your solution. 
+

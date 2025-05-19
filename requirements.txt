@@ -1,3 +1,17 @@
+# Web Framework
 Flask==3.0.3
+
+# Testing
 pytest==8.3.3
 pytest-mock==3.14.0
+
+# PDF Processing
+PyPDF2==3.0.1
+
+# Image Processing
+Pillow==10.2.0  # For PIL/Image
+pytesseract==0.3.10
+
+# Utilities
+Werkzeug==3.0.1  # For FileStorage
+gunicorn==21.2.0  # For production server
