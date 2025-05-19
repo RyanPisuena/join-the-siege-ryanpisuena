@@ -27,7 +27,8 @@ def classify_route():
         logging.error("No file in request")
         return jsonify({
             "error": "No file provided",
-            "message": "Please include a file in the request"
+            "message": "Please include a file in the request",
+            "help": "Use -F 'file=@path_to_your_file' in your curl command"
         }), 400
 
     file = request.files['file']
@@ -37,7 +38,8 @@ def classify_route():
         logging.error("No file selected")
         return jsonify({
             "error": "No file selected",
-            "message": "Please select a file"
+            "message": "Please select a file",
+            "help": "Make sure your file path is correct"
         }), 400
 
     # Validate file extension
@@ -45,23 +47,32 @@ def classify_route():
         logging.error(f"Invalid file type: {file.filename}")
         return jsonify({
             "error": "Invalid file type",
-            "message": f"Allowed file types are: {', '.join(ALLOWED_EXTENSIONS)}"
+            "message": f"Allowed file types are: {', '.join(ALLOWED_EXTENSIONS)}",
+            "help": "Check your file extension and try again"
         }), 400
 
-    # Classify the file using your existing classifier
+    # Classify the file
     try:
         result = classify_file(file)
-        logging.info(f"Successfully classified file {file.filename} as {result}")
+        
+        # Log classification details
+        logging.info(f"Classification result for {file.filename}: {result}")
+        
+        # Return enhanced response
         return jsonify({
             "filename": file.filename,
-            "classification": result
+            "classification": result["type"],
+            "confidence": result["confidence"],
+            "matched_keywords": result["matched_keywords"],
+            "message": result["message"]
         }), 200
 
     except Exception as e:
         logging.error(f"Error classifying file: {str(e)}")
         return jsonify({
             "error": "Classification failed",
-            "message": "Internal server error"
+            "message": str(e),
+            "help": "Please ensure your file is not corrupted and try again"
         }), 500
 
 if __name__ == '__main__':
