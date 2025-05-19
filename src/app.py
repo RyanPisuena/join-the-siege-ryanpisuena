@@ -52,28 +52,15 @@ def classify_route():
         }), 400
 
     # Classify the file
-    try:
-        result = classify_file(file)
-        
-        # Log classification details
-        logging.info(f"Classification result for {file.filename}: {result}")
-        
-        # Return enhanced response
-        return jsonify({
-            "filename": file.filename,
-            "classification": result["type"],
-            "confidence": result["confidence"],
-            "matched_keywords": result["matched_keywords"],
-            "message": result["message"]
-        }), 200
-
-    except Exception as e:
-        logging.error(f"Error classifying file: {str(e)}")
-        return jsonify({
-            "error": "Classification failed",
-            "message": str(e),
-            "help": "Please ensure your file is not corrupted and try again"
-        }), 500
+    result = classify_file(file)
+    logging.info(f"Classification result for {file.filename}: {result}")
+    return jsonify({
+        "filename": file.filename,
+        "classification": result["type"],
+        "confidence": result["confidence"],
+        "matched_keywords": result["matched_keywords"],
+        "message": result["message"]
+    }), 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

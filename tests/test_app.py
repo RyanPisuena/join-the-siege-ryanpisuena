@@ -70,4 +70,4 @@ def test_unknown_file(client):
     response = client.post('/classify_file', data=data, content_type='multipart/form-data')
     assert response.status_code == 200
     json_data = response.get_json()
-    assert json_data['classification'] == 'unknown file'
+    assert json_data['classification'] == 'unknown'

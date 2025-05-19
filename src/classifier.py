@@ -79,6 +79,16 @@ def calculate_document_score(text: str, keywords: list) -> float:
     score = (exact_matches * 1.0 + partial_matches * 0.5) / len(keywords)
     return score
 
+def classify_by_filename(filename: str) -> str:
+    filename = filename.lower()
+    if "drivers_license" in filename or "drivers_licence" in filename:
+        return "drivers_licence"
+    if "bank_statement" in filename:
+        return "bank_statement"
+    if "invoice" in filename:
+        return "invoice"
+    return "unknown"
+
 def classify_file(file: FileStorage) -> dict:
     """Classify document with confidence score and matched keywords"""
     try:
@@ -101,18 +111,14 @@ def classify_file(file: FileStorage) -> dict:
         best_match = max(scores.items(), key=lambda x: x[1])
         doc_type, confidence = best_match
         
-        # If confidence is too low, mark as unknown
-        if confidence < 0.1:  # Threshold can be adjusted
-            logging.warning(f"Low confidence score ({confidence}) for {file.filename}")
+        # If confidence is too low, fallback to filename
+        if confidence < 0.1:
+            fallback_type = classify_by_filename(file.filename)
             return {
-                "type": "unknown",
+                "type": fallback_type,
                 "confidence": 0,
                 "matched_keywords": [],
-                "message": "Could not confidently classify document",
-                "debug_info": {
-                    "extracted_text_sample": content_text[:100],
-                    "scores": scores
-                }
+                "message": "Could not confidently classify by content, used filename fallback"
             }
             
         return {
@@ -124,31 +130,21 @@ def classify_file(file: FileStorage) -> dict:
                 "scores": scores
             }
         }
-        
     except Exception as e:
-        logging.error(f"Classification error: {str(e)}")
-        return {
-            "type": "error",
-            "confidence": 0,
-            "matched_keywords": [],
-            "message": str(e)
-        }
+        try:
+            fallback_type = classify_by_filename(file.filename)
+            return {
+                "type": fallback_type,
+                "confidence": 0,
+                "matched_keywords": [],
+                "message": f"Content classification failed, used filename fallback: {str(e)}"
+            }
+        except Exception as fallback_error:
+            return {
+                "type": "unknown",
+                "confidence": 0,
+                "matched_keywords": [],
+                "message": f"Both content and filename classification failed: {str(fallback_error)}"
+            }
 
-'''
-from werkzeug.datastructures import FileStorage
 
-def classify_file(file: FileStorage):
-    filename = file.filename.lower()
-    # file_bytes = file.read()
-
-    if "drivers_license" in filename:
-        return "drivers_licence"
-
-    if "bank_statement" in filename:
-        return "bank_statement"
-
-    if "invoice" in filename:
-        return "invoice"
-
-    return "unknown file"
-'''
