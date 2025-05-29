@@ -5,6 +5,8 @@ from PIL import Image
 import io
 from difflib import get_close_matches
 import logging
+import joblib
+import os
 
 # Define document types and their associated keywords
 DOCUMENT_TYPES = {
@@ -23,6 +25,50 @@ DOCUMENT_TYPES = {
         'subtotal', 'tax', 'due date', 'invoice number', 'order number'
     ]
 }
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'models', 'model.pkl')
+
+def classify_by_ml(content_text: str) -> dict:
+    """Classify using the ML model. Returns result dict or None if not confident or fails."""
+    try:
+        model = joblib.load(MODEL_PATH)
+        pred = model.predict([content_text])[0]
+        proba = max(model.predict_proba([content_text])[0])
+        if proba > 0.3:  # You can adjust this threshold
+            return {
+                "type": pred,
+                "confidence": round(proba, 2),
+                "matched_keywords": [],
+                "message": "Classified by ML model"
+            }
+        else:
+            logging.info(f"ML model prediction confidence too low: {proba} for input: {repr(content_text)[:200]}")
+    except Exception as ml_error:
+        logging.warning(f"ML model classification failed: {ml_error}")
+    return None
+
+def classify_by_ocr_keywords(content_text: str) -> dict:
+    """Classify using OCR/keyword logic. Returns result dict or None if not confident or fails."""
+    try:
+        scores = {}
+        matched_keywords = {}
+        for doc_type, keywords in DOCUMENT_TYPES.items():
+            score = calculate_document_score(content_text, keywords)
+            matched = [k for k in keywords if k in content_text]
+            scores[doc_type] = score
+            matched_keywords[doc_type] = matched
+        best_match = max(scores.items(), key=lambda x: x[1])
+        doc_type, confidence = best_match
+        if confidence >= 0.1:
+            return {
+                "type": doc_type,
+                "confidence": round(confidence, 2),
+                "matched_keywords": matched_keywords[doc_type],
+                "message": "Classified by OCR/keywords"
+            }
+    except Exception as ocr_error:
+        logging.warning(f"OCR/keyword classification failed: {ocr_error}")
+    return None
 
 def get_text_from_file(file: FileStorage) -> str:
     """Extract text from different file types with error handling"""
@@ -90,61 +136,52 @@ def classify_by_filename(filename: str) -> str:
     return "unknown"
 
 def classify_file(file: FileStorage) -> dict:
-    """Classify document with confidence score and matched keywords"""
     try:
         content_text = get_text_from_file(file)
-        logging.info(f"Extracted text length: {len(content_text)}")
-        logging.info(f"First 100 chars of extracted text: {content_text[:100]}")
-        
-        # Calculate scores for each document type
-        scores = {}
-        matched_keywords = {}
-        
-        for doc_type, keywords in DOCUMENT_TYPES.items():
-            score = calculate_document_score(content_text, keywords)
-            matched = [k for k in keywords if k in content_text]
-            scores[doc_type] = score
-            matched_keywords[doc_type] = matched
-            logging.info(f"Score for {doc_type}: {score}, matched keywords: {matched}")
-        
-        # Get the best match
-        best_match = max(scores.items(), key=lambda x: x[1])
-        doc_type, confidence = best_match
-        
-        # If confidence is too low, fallback to filename
-        if confidence < 0.1:
-            fallback_type = classify_by_filename(file.filename)
-            return {
-                "type": fallback_type,
-                "confidence": 0,
-                "matched_keywords": [],
-                "message": "Could not confidently classify by content, used filename fallback"
-            }
-            
-        return {
-            "type": doc_type,
-            "confidence": round(confidence, 2),
-            "matched_keywords": matched_keywords[doc_type],
-            "message": "Document classified successfully",
-            "debug_info": {
-                "scores": scores
-            }
-        }
     except Exception as e:
+        logging.error(f"Error extracting text from file: {e}")
+        # Fallback to filename if text extraction fails
         try:
             fallback_type = classify_by_filename(file.filename)
             return {
                 "type": fallback_type,
                 "confidence": 0,
                 "matched_keywords": [],
-                "message": f"Content classification failed, used filename fallback: {str(e)}"
+                "message": f"Text extraction failed, classified by filename fallback: {str(e)}"
             }
         except Exception as fallback_error:
             return {
                 "type": "unknown",
                 "confidence": 0,
                 "matched_keywords": [],
-                "message": f"Both content and filename classification failed: {str(fallback_error)}"
+                "message": f"ML, text extraction and filename classification failed: {str(fallback_error)}"
             }
+
+    # 1. Try ML model
+    ml_result = classify_by_ml(content_text)
+    if ml_result:
+        return ml_result
+
+    # 2. Try OCR/keyword logic
+    ocr_result = classify_by_ocr_keywords(content_text)
+    if ocr_result:
+        return ocr_result
+
+    # 3. Fallback to filename
+    try:
+        fallback_type = classify_by_filename(file.filename)
+        return {
+            "type": fallback_type,
+            "confidence": 0,
+            "matched_keywords": [],
+            "message": "Classified by filename fallback"
+        }
+    except Exception as fallback_error:
+        return {
+            "type": "unknown",
+            "confidence": 0,
+            "matched_keywords": [],
+            "message": f"ML, content and filename classification failed: {str(fallback_error)}"
+        }
 
 

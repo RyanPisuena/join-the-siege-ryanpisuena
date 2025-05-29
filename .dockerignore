@@ -1,8 +1,9 @@
 venv
+__pycache__
+*.pyc
 .DS_Store
 .idea
 .vscode
-__pycache__
-*.pyc
-.env
 data/
+.env
+tests/
