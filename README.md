@@ -51,7 +51,6 @@ cp .env.example .env
 #### With Docker (recommended)
 ```bash
 docker build -t heron-classifier .
-docker run -p 5001:5001 --env-file .env heron-classifier
 ```
 #### Or locally (for development)
 ```bash
@@ -72,6 +71,10 @@ python src/train_model.py
 ### 5. Run the Flask app
 ```bash
 python -m src.app
+```
+or with docker
+```bash
+docker run -p 5001:5001 --env-file .env heron-classifier
 ```
 
 ### 6. Test the classifier using curl
