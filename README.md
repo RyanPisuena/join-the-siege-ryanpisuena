@@ -74,7 +74,7 @@ python -m src.app
 ```
 or with docker
 ```bash
-docker run -p 5001:5001 --env-file .env heron-classifier
+docker run -p 5001:5001 heron-classifier
 ```
 
 ### 6. Test the classifier using curl
