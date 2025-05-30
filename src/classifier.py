@@ -26,12 +26,13 @@ DOCUMENT_TYPES = {
     ]
 }
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'models', 'model.pkl')
+def load_ml_model():
+    MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'models', 'model.pkl')
+    return joblib.load(MODEL_PATH)
 
-def classify_by_ml(content_text: str) -> dict:
+def classify_by_ml(content_text: str, model) -> dict:
     """Classify using the ML model. Returns result dict or None if not confident or fails."""
     try:
-        model = joblib.load(MODEL_PATH)
         pred = model.predict([content_text])[0]
         proba = max(model.predict_proba([content_text])[0])
         if proba > 0.3:  # You can adjust this threshold
@@ -135,7 +136,7 @@ def classify_by_filename(filename: str) -> str:
         return "invoice"
     return "unknown"
 
-def classify_file(file: FileStorage) -> dict:
+def classify_file(file: FileStorage, ml_model=None) -> dict:
     try:
         content_text = get_text_from_file(file)
     except Exception as e:
@@ -158,9 +159,10 @@ def classify_file(file: FileStorage) -> dict:
             }
 
     # 1. Try ML model
-    ml_result = classify_by_ml(content_text)
-    if ml_result:
-        return ml_result
+    if ml_model is not None:
+        ml_result = classify_by_ml(content_text, ml_model)
+        if ml_result:
+            return ml_result
 
     # 2. Try OCR/keyword logic
     ocr_result = classify_by_ocr_keywords(content_text)

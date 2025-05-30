@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import logging
-from src.classifier import classify_file
+from src.classifier import classify_file, load_ml_model
+
 
 # Configure logging
 logging.basicConfig(
@@ -16,6 +17,8 @@ ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 def allowed_file(filename: str) -> bool:
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+ml_model = load_ml_model()
 
 @app.route('/classify_file', methods=['POST'])
 def classify_route():
@@ -52,7 +55,7 @@ def classify_route():
         }), 400
 
     # Classify the file
-    result = classify_file(file)
+    result = classify_file(file, ml_model=ml_model)
     logging.info(f"Classification result for {file.filename}: {result}")
     return jsonify({
         "filename": file.filename,
